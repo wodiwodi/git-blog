@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="no-js">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width">
+	<meta name="keywords" content="MySQL,微博,关注关系,MySQL数据库,离离鸟">
+	<meta name="description" content="由于产品需求的需要，我们做的产品里要实现类似微博里的关注关系。本文是以MySQL为基础，分析用MySQL如何实现微博的关注关系，对理解关注关系有一定的意义。">
+
+	<!--[if lt IE 9]>
+	<script src="/theme/default/js/html5.js"></script>
+	<![endif]-->
+	<script>(function(html){html.className = html.className.replace(/\bno-js\b/,'js')})(document.documentElement);</script>
+	
+	<title>用MySQL实现微博关注关系的方案分析|离离鸟</title>
+	
+	<link rel="stylesheet" href="/theme/default/css/genericons.css?ver=1.0" type="text/css" media="all" />
+	<link rel="stylesheet" href="/theme/default/css/style.css?ver=1.0" type="text/css" media="all" />
+	<link rel="stylesheet" href="/theme/default/css/markdown.css?ver=1.0" type="text/css" media="all" />
+	<link rel="alternate" type="application/rss+xml" title="离离鸟" href="//feed.xml" />
+	<!--[if lt IE 9]>
+	<link rel="stylesheet" href="/theme/default/css/ie.css?ver=1.0" type="text/css" media="all" />
+	<![endif]-->
+	<!--[if lt IE 8]>
+	<link rel="stylesheet" href="/theme/default/css/ie7.css?ver=1.0" type="text/css" media="all" />
+	<![endif]-->
+	
+	<script type="text/javascript" src="/theme/default/js/jquery/jquery.js?ver=1.0"></script>
+	<script type="text/javascript" src="/theme/default/js/jquery/jquery-migrate.min.js?ver=1.0"></script>
+	
+	<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?2703fc1521f461981b9b79a76cfd2f5d";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+	
+</head>
+
+<body>
+<div id="page" class="hfeed site">
+	<a class="skip-link screen-reader-text" href="#content">Skip to content</a>
+	
+	    <div id="sidebar" class="sidebar">
+	<header id="masthead" class="site-header" role="banner">
+		<div class="site-branding">
+			<h1 class="site-title"><a href="/" rel="home">离离鸟</a></h1>
+				<p class="site-description">追着逝去的梦、向远方!</p>
+				<button class="secondary-toggle">菜单和挂件</button>
+		</div><!-- .site-branding -->
+	</header><!-- .site-header -->
+	<div id="secondary" class="secondary">
+		<div id="widget-area" class="widget-area" role="complementary">
+		
+			<aside id="categories" class="widget widget_categories">
+    <h2 class="widget-title">分类目录</h2>
+    <ul>
+                <li class="cat-item"><a href="/category/1085653296.html" >laravel</a></li>
+                <li class="cat-item"><a href="/category/107260689.html" >GitBlog</a></li>
+                <li class="cat-item"><a href="/category/511790939.html" >Sphinx</a></li>
+                <li class="cat-item"><a href="/category/1460001917.html" >MySQL数据库</a></li>
+                <li class="cat-item"><a href="/category/1703341873.html" >Linux服务器</a></li>
+                <li class="cat-item"><a href="/category/1806945563.html" >mysql</a></li>
+                <li class="cat-item"><a href="/category/1862565854.html" >NoSQL开发</a></li>
+            </ul>
+</aside>
+		    <aside class="widget widget_archive">
+    <h2 class="widget-title">文章归档</h2>
+    <ul>
+        <li><a href="/archive/201509.html">2015-09</a></li>
+        <li><a href="/archive/201507.html">2015-07</a></li>
+        <li><a href="/archive/201511.html">2015-11</a></li>
+        <li><a href="/archive/201508.html">2015-08</a></li>
+        </ul>
+</aside>
+		    <aside id="recent-posts" class="widget widget_recent_entries">
+    <h2 class="widget-title">近期文章</h2>
+    <ul>
+        <li><a href="/blog/beian.html">域名在备案、好想体验下CDN的感觉</a></li>
+        <li><a href="/blog/welcome.html">体验GitBlog</a></li>
+        <li><a href="/blog/mysql-start-stop.html">如何启动/停止/重启MySQL服务</a></li>
+        <li><a href="/blog/netstat.html">netstat命令的基本用法</a></li>
+        <li><a href="/blog/mmseg.html">coreseek中mmseg词库的导入方法</a></li>
+        </ul>
+</aside>
+		    <aside id="tag_cloud" class="widget widget_tag_cloud">
+    <h2 class="widget-title">标签</h2>
+    <div class="tagcloud">
+        <a href="/tags/857322635.html" title="笔记" >笔记</a>
+        <a href="/tags/107260689.html" title="GitBlog" >GitBlog</a>
+        <a href="/tags/1236603860.html" title="博客" >博客</a>
+        <a href="/tags/1739258616.html" title="静态" >静态</a>
+        <a href="/tags/990660477.html" title="blade" >blade</a>
+        <a href="/tags/124843.html" title="coreseek" >coreseek</a>
+        <a href="/tags/511790939.html" title="Sphinx" >Sphinx</a>
+        <a href="/tags/765534140.html" title="搜索引擎" >搜索引擎</a>
+        <a href="/tags/859299063.html" title="InnoDB" >InnoDB</a>
+        <a href="/tags/372942743.html" title="MySQL" >MySQL</a>
+        <a href="/tags/57395030.html" title="内存管理" >内存管理</a>
+        <a href="/tags/2029238744.html" title="脏页" >脏页</a>
+        <a href="/tags/1845327201.html" title="双写缓冲" >双写缓冲</a>
+        <a href="/tags/738693143.html" title="数据库" >数据库</a>
+        <a href="/tags/432008716.html" title="表空间" >表空间</a>
+        <a href="/tags/1775456038.html" title="mmseg" >mmseg</a>
+        <a href="/tags/1332737870.html" title="Mosquitto" >Mosquitto</a>
+        <a href="/tags/472249346.html" title="服务器" >服务器</a>
+        <a href="/tags/1203904068.html" title="ACID" >ACID</a>
+        <a href="/tags/1917151689.html" title="源码" >源码</a>
+        <a href="/tags/1806945563.html" title="mysql" >mysql</a>
+        <a href="/tags/1752954334.html" title="Linux" >Linux</a>
+        <a href="/tags/1247123370.html" title="redis" >redis</a>
+        <a href="/tags/1207068044.html" title="计数器" >计数器</a>
+        <a href="/tags/1419996455.html" title="微博" >微博</a>
+        <a href="/tags/1820957533.html" title="关注" >关注</a>
+        <a href="/tags/1683366557.html" title="关注关系" >关注关系</a>
+        </div>
+</aside>
+		    <aside id="text" class="widget widget_text">
+    <h2 class="widget-title">介绍</h2>	
+    <div class="textwidget">
+    	<p>起笔难落，下笔有情；情牵何处，何处有愁思；如果不是有因为的因为，也不会有所以的所以；！</p>
+    </div>
+</aside>
+	    </div><!-- .widget-area -->
+    </div><!-- .secondary -->
+</div><!-- .sidebar -->  
+	    <div id="content" class="site-content">
+    <div id="primary" class="content-area">
+        <main id="main" class="site-main" role="main">
+        
+            <article class="post hentry">
+<header class="entry-header">
+    <h1 class="entry-title">用MySQL实现微博关注关系的方案分析</h1>
+</header><!-- .entry-header -->
+<div class="entry-content">
+<!--
+author: jockchou
+date: 2015-07-23
+title: 用MySQL实现微博关注关系的方案分析
+tags: MySQL, 微博,关注关系
+category: MySQL数据库
+status: publish
+summary: 由于产品需求的需要，我们做的产品里要实现类似微博里的关注关系。本文是以MySQL为基础，分析用MySQL如何实现微博的关注关系，对理解关注关系有一定的意义。
+-->
+<p>由于产品需求的需要，我们做的产品里要实现类似微博里的关注关系。本文是以MySQL为基础，分析用MySQL如何实现微博的关注关系，对理解关注关系有一定的意义。</p>
+<h2 id="关注关系产生的四种关系状态">关注关系产生的四种关系状态</h2>
+<ul>
+<li>关注</li>
+<li>粉丝</li>
+<li>双向关注(互粉)</li>
+<li>无关系</li>
+</ul>
+<p>用词follower表示粉丝      -- 追随者<br />
+用词following表示关注     -- 追随  </p>
+<h2 id="设计的结构必须能满足以下功能：">设计的结构必须能满足以下功能：</h2>
+<ul>
+<li>查询关注列表</li>
+<li>查询粉丝列表</li>
+<li>查询双向关注列表</li>
+<li>判断两个用户的关系</li>
+<li>查询带关系状态的任一列表</li>
+</ul>
+<h2 id="第一种方案">第一种方案</h2>
+<p>用一行纪录表示关注和粉丝，字段u2的值表示粉丝，u1表示被关注者。</p>
+<p>Table: user(用户表)<br />
+<img src="./img/3.png" alt="img" /></p>
+<p>Table: follower(u2表示粉丝， u1表示被关注的人)<br />
+<img src="./img/1.png" alt="img" /></p>
+<p>查询用户id = 1的关注列表</p>
+<pre><code>SELECT * FROM follower WHERE u2 = 1</code></pre>
+<p>查询用户id = 1的粉丝列表</p>
+<pre><code>SELECT * FROM follower WHERE u1 = 1</code></pre>
+<p>查询用户id = 1的双向关注列表</p>
+<pre><code>SELECT t1.* FROM (SELECT * FROM follower WHERE u2 = 1)  AS t1 INNER JOIN follower t2 ON t1.u1 = t2.u2 LIMIT 10</code></pre>
+<p>判断两个用户的关系(id = 1  --&gt; id = 5)</p>
+<pre><code>SELECT * FROM follower WHERE (u2 = 1 or u1 = 1) AND (u2 = 5 or u1 = 5) LIMIT 3</code></pre>
+<p>id = 1的用户查询所有 id &lt; 5的用户，并显示关系</p>
+<p><img src="./img/2.png" alt="img" /></p>
+<p>如上图所示，要查询的用户的那个圈，被分成了四个部分（上面讲的四种状态）：</p>
+<ul>
+<li>关注了我的用户</li>
+<li>和我互粉的用户</li>
+<li>我关注了的用户</li>
+<li>我未关注的用户</li>
+</ul>
+<p>以上复杂的集合关系，通过单一SQL根本无法实现。</p>
+<p>要查询的用户与粉丝集合的交集:</p>
+<pre><code>SELECT * FROM 
+
+(SELECT * FROM user WHERE id &lt; 5) AS t1
+INNER JOIN
+
+(SELECT * FROM follower WHERE u1 = 1) AS t2
+
+ON t1.id = t2.u2</code></pre>
+<p>要查询的用户与关注集合的交集:</p>
+<pre><code>SELECT * FROM 
+
+(SELECT * FROM user WHERE id &lt; 5) AS t1
+INNER JOIN
+
+(SELECT * FROM follower WHERE u2 = 1) AS t3
+
+ON t1.id = t3.u1</code></pre>
+<p>其他的部分可以通过以上两步查询出来的数据，在内存中作计算得出。</p>
+<p>因为关注关系是互相的，用一行纪录即可表示。以上的设计其实是把关注和粉丝的概念用一行纪录表达。这样会引来一个缺点，当follower非常大的时候，对follower表进行分片，如果按u1或者u2分片，假设按u1分片，那么将导致关注列表，即下面的查询要做聚合。</p>
+<pre><code>SELECT * FROM follower WHERE u2 = 1</code></pre>
+<p>选择u1分片后，u2 = 1的数据行将会落到不同的分片上。</p>
+<pre><code>SELECT * FROM follower_0 WHERE u2 = 1
+UNION 
+SELECT * FROM follower_1 WHERE u2 = 1</code></pre>
+<p>而粉丝列表的查询不会受影响，同一个用户的所有粉丝分在一个片上。</p>
+<pre><code>SELECT * FROM follower_1 WHERE u1 = 1</code></pre>
+<p>如果按u2分片，同样也会导致粉丝列表会落在不同的分片上。两个查询不可能同时满足分片。</p>
+<p>如果分片是跨数据库或者是跨主机的方案，问题会变得更复杂。</p>
+<h1 id="针对方片的优化方案">针对方片的优化方案</h1>
+<p>可以用冗余数据的办法来解决数据分片带来的问题，即将关注和粉丝分2个表存放。
+用follower表存放粉丝<br />
+用following表存放关注  </p>
+<p>当用户Ub关注Ua，分别往follower, following写入一行纪录。 （Ua -&gt; Ub） 只是他们表示的含义不同。</p>
+<p>follower表示Ua的粉丝是Ub<br />
+following表示Ub关注Ua  </p>
+<p>分片的时候，同时对follower和following进行分片。同时上面分析的所有查询方法也要相应改变，思路还是一样，只是单个表的自联接变成2个表的联接。</p>
+<p>以上方案缺点就是数据量会增加一倍，进行关注或者取消关注的写操作会多一次，要同时维护2个表的数据。</p>
+<p>以上优化虽然解决了一些问题，但同时也带来一些问题。可见关系型数据库在处理用户关系的时候，表现得很吃力。我们不得不承认，虽然叫“关系”型数据库却不太懂得处理集合关系。</p>
+<h2 id="另一种方案">另一种方案</h2>
+<p>还有一种方案，即用一行纪录表示出两个用户之间的所有关系，此方案能节省很大的数据空占用。</p>
+<p>字段: u1, u2, type</p>
+<p>type=1 表示u2关注u1<br />
+type=2 表示u1,u2互相关注<br />
+type=0 表示u1,u2无关系(默认)  </p>
+<p>保证插入数据时，u1是被关注者，u2是粉丝（当然你也可以换过来，只是逻辑会变了）</p>
+<p>每次写入数据时要检查当前的状态：</p>
+<p>如果u1(1) -&gt; u2(2)纪录已经存在（u2已经关注u1），这个时候u1再关注u2，只需要将type字段的值变为type = 2。</p>
+<p>如果u1(1) -&gt; u2(2) type(2)时，即u1和u2互相关注，如果有一个人取消关注，问题会很复杂，最坏的情况要修改整行纪录，交换u1,u2这两个字段的值，再修改type=1。</p>
+<p>同时上面的方案查询也会变化。例如要查询id = 1的粉丝列表：</p>
+<pre><code>SELECT * FROM table WHERE u1 = 1 OR (u2 = 1 AND type = 2)</code></pre>
+<p>例如要查询id = 1的关注列表：</p>
+<pre><code>SELECT * FROM table WHERE u2 = 1 OR (u1 = 1 AND type = 2)</code></pre>
+<p>上面的方案只强调关注关系，双向关系只是在单一关系上用字段区分，关注的先后关系很明显，事务性更强。</p>
+<p>查询id = 1的双向关注</p>
+<pre><code>SELECT * FROM table WHERE type = 2 AND (u1 = 1 OR u2 = 1)</code></pre>
+<p>这个方案虽然节省数据空间，但是不容易理解，而且写入时每次要检查判断当前的关系，逻辑上过于复杂。而且数据量大后，由于查询WHERE条件同时有u1和u2，很难进行分片。</p>
+<h1 id="其他一些问题">其他一些问题</h1>
+<ul>
+<li>ua与ub的共同关注列表</li>
+<li>ua与ub的共同粉丝列表</li>
+<li>ua的关注列表里谁关注了ub</li>
+</ul>
+<p>以上的关系计算大家可能很容易理解，但要在MySQL里实现，是非常难的。</p>
+<p>id = 3与id = 2的共同关注列表：</p>
+<pre><code>SELECT  u1, COUNT(id) AS num FROM follower WHERE u2 = 3 OR u2 = 2
+GROUP BY u1 HAVING num &gt; 1</code></pre>
+<p>id = 3与id = 1的共同粉丝列表：</p>
+<pre><code>SELECT  u2, COUNT(id) AS num FROM follower WHERE u1 = 3 OR u1 = 1
+GROUP BY u2 HAVING num &gt; 1
+</code></pre>
+<p>当然你可以用集合的方法查询:</p>
+<pre><code>SELECT t1.u2 FROM 
+(SELECT  u2 FROM follower WHERE u1 = 3) AS t1
+ INNER JOIN
+(SELECT  u2 FROM follower WHERE u1 = 1) AS t2
+
+ON t1.u2 = t2.u2</code></pre>
+<p>id = 1的关注列表里谁关注了id = 5</p>
+<pre><code>SELECT u2 FROM (SELECT u2 FROM follower WHERE u1 = 2) AS t1
+INNER JOIN 
+(SELECT u1 FROM follower WHERE u2 = 1) AS t2
+ON t2.u1 = t1.u2</code></pre>
+</div><!-- .entry-content --><footer class="entry-footer">
+	    <span class="posted-on">
+        <span class="screen-reader-text">Posted on </span>
+        <time class="entry-date published">2015-07-23</time>
+    </span>
+		
+	    <span class="byline">
+        <span class="author vcard">
+            <span class="screen-reader-text">Author </span>
+            jockchou
+        </span>
+    </span>
+        
+        <span class="cat-links">
+        <span class="screen-reader-text">Categories </span>
+          
+           <a href="/category/1460001917.html" rel="category">MySQL数据库</a>
+            </span>
+        
+    
+        <span class="tags-links">
+    	
+        <span class="screen-reader-text">Tags </span>
+          
+           <a href="/tags/372942743.html" rel="tag">MySQL</a>
+          
+           <a href="/tags/1419996455.html" rel="tag">微博</a>
+          
+           <a href="/tags/1683366557.html" rel="tag">关注关系</a>
+            </span>
+    </footer><!-- .entry-footer --></article><!-- #post-## -->            <div id="comments" class="comments-area">
+	<div id="respond" class="comment-respond">
+		<!-- 多说评论框 start -->
+		<div class="ds-thread" data-thread-key="50414263258b94fc7726b8444c456ac0" data-title="用MySQL实现微博关注关系的方案分析" data-url="//blog/weibo-follow.html"></div>
+		<!-- 多说评论框 end -->
+		<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+		<script type="text/javascript">
+		var duoshuoQuery = {short_name:"ice-fire"};
+		(function() {
+			var ds = document.createElement('script');
+			ds.type = 'text/javascript';ds.async = true;
+			ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+			ds.charset = 'UTF-8';
+			(document.getElementsByTagName('head')[0] 
+			 || document.getElementsByTagName('body')[0]).appendChild(ds);
+		})();
+		</script>
+        <!-- 多说公共JS代码 end -->
+	</div><!-- #respond -->
+</div><!-- .comments-area -->
+            
+        </main><!-- .site-main -->
+    </div><!-- .content-area -->
+</div><!-- .site-content -->	    <footer id="colophon" class="site-footer" role="contentinfo">
+    <div class="site-info">
+       
+<center>
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?fbe9a20bfe6ea4fe9f014a18deb04e7c";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+<br>
+<a href="http://www.mmtrix.com" target="_blank"><img alt="mmtrix" src="http://s3.mmtrix.com/league/150-60.png"/></a>
+</center>
+ </div><!-- .site-info -->
+</footer><!-- .site-footer -->
+	
+</div><!-- .site -->
+<script type="text/javascript" src="/theme/default/js/skip-link-focus-fix.js?ver=1.0"></script>
+<script type="text/javascript">
+/* <![CDATA[ */
+var screenReaderText = {"expand":"<span class=\"screen-reader-text\">\u5c55\u5f00\u5b50\u83dc\u5355<\/span>","collapse":"<span class=\"screen-reader-text\">\u6298\u53e0\u5b50\u83dc\u5355<\/span>"};
+/* ]]> */
+</script>
+<script type="text/javascript" src="/theme/default/js/functions.js?ver=1.0"></script>
+<link rel="stylesheet" href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css">
+<script src="http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+
+<script type="text/x-mathjax-config">MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});</script>
+<script type="text/javascript" src="http://cdn.bootcss.com/mathjax/2.5.3/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+</body>
+</html>

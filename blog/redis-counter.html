@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="no-js">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width">
+	<meta name="keywords" content="redis,计数器,NoSQL开发,离离鸟">
+	<meta name="description" content="社交产品业务里有很多计数的地方，比如点赞数，评论数等。点赞操作MySQL执行+1这种写操作,写入非常频繁,对数据库写的压力很大,现整理一个内存存储优化方案供大家一起研究讨论。">
+
+	<!--[if lt IE 9]>
+	<script src="/theme/default/js/html5.js"></script>
+	<![endif]-->
+	<script>(function(html){html.className = html.className.replace(/\bno-js\b/,'js')})(document.documentElement);</script>
+	
+	<title>用redis实现计数器|离离鸟</title>
+	
+	<link rel="stylesheet" href="/theme/default/css/genericons.css?ver=1.0" type="text/css" media="all" />
+	<link rel="stylesheet" href="/theme/default/css/style.css?ver=1.0" type="text/css" media="all" />
+	<link rel="stylesheet" href="/theme/default/css/markdown.css?ver=1.0" type="text/css" media="all" />
+	<link rel="alternate" type="application/rss+xml" title="离离鸟" href="//feed.xml" />
+	<!--[if lt IE 9]>
+	<link rel="stylesheet" href="/theme/default/css/ie.css?ver=1.0" type="text/css" media="all" />
+	<![endif]-->
+	<!--[if lt IE 8]>
+	<link rel="stylesheet" href="/theme/default/css/ie7.css?ver=1.0" type="text/css" media="all" />
+	<![endif]-->
+	
+	<script type="text/javascript" src="/theme/default/js/jquery/jquery.js?ver=1.0"></script>
+	<script type="text/javascript" src="/theme/default/js/jquery/jquery-migrate.min.js?ver=1.0"></script>
+	
+	<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?2703fc1521f461981b9b79a76cfd2f5d";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+	
+</head>
+
+<body>
+<div id="page" class="hfeed site">
+	<a class="skip-link screen-reader-text" href="#content">Skip to content</a>
+	
+	    <div id="sidebar" class="sidebar">
+	<header id="masthead" class="site-header" role="banner">
+		<div class="site-branding">
+			<h1 class="site-title"><a href="/" rel="home">离离鸟</a></h1>
+				<p class="site-description">追着逝去的梦、向远方!</p>
+				<button class="secondary-toggle">菜单和挂件</button>
+		</div><!-- .site-branding -->
+	</header><!-- .site-header -->
+	<div id="secondary" class="secondary">
+		<div id="widget-area" class="widget-area" role="complementary">
+		
+			<aside id="categories" class="widget widget_categories">
+    <h2 class="widget-title">分类目录</h2>
+    <ul>
+                <li class="cat-item"><a href="/category/1085653296.html" >laravel</a></li>
+                <li class="cat-item"><a href="/category/107260689.html" >GitBlog</a></li>
+                <li class="cat-item"><a href="/category/511790939.html" >Sphinx</a></li>
+                <li class="cat-item"><a href="/category/1460001917.html" >MySQL数据库</a></li>
+                <li class="cat-item"><a href="/category/1703341873.html" >Linux服务器</a></li>
+                <li class="cat-item"><a href="/category/1806945563.html" >mysql</a></li>
+                <li class="cat-item"><a href="/category/1862565854.html" >NoSQL开发</a></li>
+            </ul>
+</aside>
+		    <aside class="widget widget_archive">
+    <h2 class="widget-title">文章归档</h2>
+    <ul>
+        <li><a href="/archive/201509.html">2015-09</a></li>
+        <li><a href="/archive/201507.html">2015-07</a></li>
+        <li><a href="/archive/201511.html">2015-11</a></li>
+        <li><a href="/archive/201508.html">2015-08</a></li>
+        </ul>
+</aside>
+		    <aside id="recent-posts" class="widget widget_recent_entries">
+    <h2 class="widget-title">近期文章</h2>
+    <ul>
+        <li><a href="/blog/beian.html">域名在备案、好想体验下CDN的感觉</a></li>
+        <li><a href="/blog/welcome.html">体验GitBlog</a></li>
+        <li><a href="/blog/mysql-start-stop.html">如何启动/停止/重启MySQL服务</a></li>
+        <li><a href="/blog/netstat.html">netstat命令的基本用法</a></li>
+        <li><a href="/blog/mmseg.html">coreseek中mmseg词库的导入方法</a></li>
+        </ul>
+</aside>
+		    <aside id="tag_cloud" class="widget widget_tag_cloud">
+    <h2 class="widget-title">标签</h2>
+    <div class="tagcloud">
+        <a href="/tags/857322635.html" title="笔记" >笔记</a>
+        <a href="/tags/107260689.html" title="GitBlog" >GitBlog</a>
+        <a href="/tags/1236603860.html" title="博客" >博客</a>
+        <a href="/tags/1739258616.html" title="静态" >静态</a>
+        <a href="/tags/990660477.html" title="blade" >blade</a>
+        <a href="/tags/124843.html" title="coreseek" >coreseek</a>
+        <a href="/tags/511790939.html" title="Sphinx" >Sphinx</a>
+        <a href="/tags/765534140.html" title="搜索引擎" >搜索引擎</a>
+        <a href="/tags/859299063.html" title="InnoDB" >InnoDB</a>
+        <a href="/tags/372942743.html" title="MySQL" >MySQL</a>
+        <a href="/tags/57395030.html" title="内存管理" >内存管理</a>
+        <a href="/tags/2029238744.html" title="脏页" >脏页</a>
+        <a href="/tags/1845327201.html" title="双写缓冲" >双写缓冲</a>
+        <a href="/tags/738693143.html" title="数据库" >数据库</a>
+        <a href="/tags/432008716.html" title="表空间" >表空间</a>
+        <a href="/tags/1775456038.html" title="mmseg" >mmseg</a>
+        <a href="/tags/1332737870.html" title="Mosquitto" >Mosquitto</a>
+        <a href="/tags/472249346.html" title="服务器" >服务器</a>
+        <a href="/tags/1203904068.html" title="ACID" >ACID</a>
+        <a href="/tags/1917151689.html" title="源码" >源码</a>
+        <a href="/tags/1806945563.html" title="mysql" >mysql</a>
+        <a href="/tags/1752954334.html" title="Linux" >Linux</a>
+        <a href="/tags/1247123370.html" title="redis" >redis</a>
+        <a href="/tags/1207068044.html" title="计数器" >计数器</a>
+        <a href="/tags/1419996455.html" title="微博" >微博</a>
+        <a href="/tags/1820957533.html" title="关注" >关注</a>
+        <a href="/tags/1683366557.html" title="关注关系" >关注关系</a>
+        </div>
+</aside>
+		    <aside id="text" class="widget widget_text">
+    <h2 class="widget-title">介绍</h2>	
+    <div class="textwidget">
+    	<p>起笔难落，下笔有情；情牵何处，何处有愁思；如果不是有因为的因为，也不会有所以的所以；！</p>
+    </div>
+</aside>
+	    </div><!-- .widget-area -->
+    </div><!-- .secondary -->
+</div><!-- .sidebar -->  
+	    <div id="content" class="site-content">
+    <div id="primary" class="content-area">
+        <main id="main" class="site-main" role="main">
+        
+            <article class="post hentry">
+<header class="entry-header">
+    <h1 class="entry-title">用redis实现计数器</h1>
+</header><!-- .entry-header -->
+<div class="entry-content">
+<!--
+author: jockchou
+date: 2015-07-23
+title: 用redis实现计数器
+tags: redis, 计数器
+category: NoSQL开发
+status: publish
+summary:社交产品业务里有很多计数的地方，比如点赞数，评论数等。点赞操作MySQL执行+1这种写操作,写入非常频繁,对数据库写的压力很大,现整理一个内存存储优化方案供大家一起研究讨论。
+-->
+<p>社交产品业务里有很多计数的地方，比如点赞数，评论数等。点赞操作MySQL执行+1这种写操作,写入非常频繁,对数据库写的压力很大,现整理一个内存存储优化方案供大家一起研究讨论。</p>
+<p>社交产品业务里有很多统计计数的功能，比如：</p>
+<ul>
+<li>用户： 总点赞数，关注数，粉丝数</li>
+<li>帖子： 点赞数，评论数，热度</li>
+<li>消息： 已读，未读，红点消息数</li>
+<li>话题： 阅读数，帖子数，收藏数</li>
+</ul>
+<h2 id="统计计数的特点">统计计数的特点</h2>
+<ul>
+<li>实时性要求高  </li>
+<li>写的频率很高  </li>
+<li>写的性能对MySQL是一个挑战  </li>
+</ul>
+<p>可以采用redis来优化高频率写入的性能要求。</p>
+<h2 id="redis优化方案一">redis优化方案一</h2>
+<p>对于每一个实体的计数，设计一个hash结构的counter：</p>
+<pre><code>//用户
+counter:user:{userID}
+                        -&gt;  praiseCnt: 100      //点赞数
+                        -&gt;  hostCnt: 200        //热度
+                        -&gt;  followCnt: 332      //关注数
+                        -&gt;  fansCnt: 123        //粉丝数
+
+//帖子
+counter:topic:{topicID}
+                        -&gt; praiseCnt: 100       //点赞数
+                        -&gt; commentCnt: 322      //评论数
+
+//话题
+counter:subject:{subjectID}
+                            -&gt; favoCnt: 312     //收藏数
+                            -&gt; viewCnt: 321     //阅读数
+                            -&gt; searchCnt: 212   //搜索进入次数
+                            -&gt; topicCnt: 312    //话题中帖子数 
+</code></pre>
+<p>类似这种计数器，随着产品功能的增加，也会越来越多，比如回复数，踩数，转发数什么的。</p>
+<h2 id="redis相关的命令">redis相关的命令</h2>
+<pre><code>//获取指定userID的所有计数器
+HGETALL counter:user:{userID}   
+
+//获取指定userID的指定计数器
+HMGET counter:user:{userID}  praiseCnt hostCnt 
+
+//指定userID点赞数+1
+HINCRBY counter:user:{userID}   praiseCnt </code></pre>
+<p>缺点：</p>
+<blockquote>
+<p>这样设计，如果要批量查询多个用户的数据，就比较麻烦，例如一次要查指定20个userID的计数器？只能循环执行 HGETALL counter:user:{userID}。</p>
+</blockquote>
+<p>优点：</p>
+<blockquote>
+<p>以实体聚合数据，方便数据管理</p>
+</blockquote>
+<h2 id="redis优化方案二">redis优化方案二</h2>
+<p>方案二是用来解决方案一的缺点的，依然是采用hash，结构设计是这样的：</p>
+<pre><code>counter:user:praiseCnt
+                        -&gt;  userID_1001: 100
+                        -&gt;  userID_1002: 200
+                        -&gt;  userID_1003: 332
+                        -&gt;  userID_1004: 123
+                                .......
+                        -&gt;  userID_9999: 213
+
+counter:user:hostCnt
+                        -&gt;  userID_1001: 10
+                        -&gt;  userID_1002: 290
+                        -&gt;  userID_1003: 322
+                        -&gt;  userID_1004: 143
+                                .......
+                        -&gt;  userID_9999: 213
+
+counter:user:followCnt
+                        -&gt;  userID_1001: 21
+                        -&gt;  userID_1002: 10
+                        -&gt;  userID_1003: 32
+                        -&gt;  userID_1004: 203
+                                .......
+                        -&gt;  userID_9999: 130
+</code></pre>
+<p>获取多个指定userID的点赞数的命令变成这样了：</p>
+<pre><code>HMGET counter:user:praiseCnt userID_1001 userID_1002</code></pre>
+<p>上面命令可以批量获取多个用户的点赞数，时间复杂度为O(n)，n为指定userID的数量。</p>
+<p>优点：</p>
+<blockquote>
+<p>解决了批量操作的问题</p>
+</blockquote>
+<p>缺点：</p>
+<blockquote>
+<p>当要获取多个计数器，比如同时需要praiseCnt，hostCnt时，要读多次，不过要比第一种方案读的次数要少。
+一个hash里的字段将会非常宠大，HMGET也许会有性能瓶颈。</p>
+</blockquote>
+<h2 id="用redis管道（Pipelining)来优化方案一">用redis管道（Pipelining)来优化方案一</h2>
+<p>对于第一种方案的缺点，可以通过redis管道来优化，一次性发送多个命令给redis执行：</p>
+<pre><code>$userIDArray = array(1001, 1002, 1003, 1009);
+
+$pipe = $redis-&gt;multi(Redis::PIPELINE);
+foreach ($userIDArray as $userID) {
+    $pipe-&gt;hGetAll('counter:user:' . $userID);
+}
+
+$replies = $pipe-&gt;exec();
+print_r($replies);  </code></pre>
+<p>还有一种方式是在redis上执行lua脚本，前提是你必须要学会写lua。</p>
+</div><!-- .entry-content --><footer class="entry-footer">
+	    <span class="posted-on">
+        <span class="screen-reader-text">Posted on </span>
+        <time class="entry-date published">2015-07-23</time>
+    </span>
+		
+	    <span class="byline">
+        <span class="author vcard">
+            <span class="screen-reader-text">Author </span>
+            jockchou
+        </span>
+    </span>
+        
+        <span class="cat-links">
+        <span class="screen-reader-text">Categories </span>
+          
+           <a href="/category/1862565854.html" rel="category">NoSQL开发</a>
+            </span>
+        
+    
+        <span class="tags-links">
+    	
+        <span class="screen-reader-text">Tags </span>
+          
+           <a href="/tags/1247123370.html" rel="tag">redis</a>
+          
+           <a href="/tags/1207068044.html" rel="tag">计数器</a>
+            </span>
+    </footer><!-- .entry-footer --></article><!-- #post-## -->            <div id="comments" class="comments-area">
+	<div id="respond" class="comment-respond">
+		<!-- 多说评论框 start -->
+		<div class="ds-thread" data-thread-key="1a9eda015b43f9ea9a0e0679ccab8f88" data-title="用redis实现计数器" data-url="//blog/redis-counter.html"></div>
+		<!-- 多说评论框 end -->
+		<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+		<script type="text/javascript">
+		var duoshuoQuery = {short_name:"ice-fire"};
+		(function() {
+			var ds = document.createElement('script');
+			ds.type = 'text/javascript';ds.async = true;
+			ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+			ds.charset = 'UTF-8';
+			(document.getElementsByTagName('head')[0] 
+			 || document.getElementsByTagName('body')[0]).appendChild(ds);
+		})();
+		</script>
+        <!-- 多说公共JS代码 end -->
+	</div><!-- #respond -->
+</div><!-- .comments-area -->
+            
+        </main><!-- .site-main -->
+    </div><!-- .content-area -->
+</div><!-- .site-content -->	    <footer id="colophon" class="site-footer" role="contentinfo">
+    <div class="site-info">
+       
+<center>
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?fbe9a20bfe6ea4fe9f014a18deb04e7c";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+<br>
+<a href="http://www.mmtrix.com" target="_blank"><img alt="mmtrix" src="http://s3.mmtrix.com/league/150-60.png"/></a>
+</center>
+ </div><!-- .site-info -->
+</footer><!-- .site-footer -->
+	
+</div><!-- .site -->
+<script type="text/javascript" src="/theme/default/js/skip-link-focus-fix.js?ver=1.0"></script>
+<script type="text/javascript">
+/* <![CDATA[ */
+var screenReaderText = {"expand":"<span class=\"screen-reader-text\">\u5c55\u5f00\u5b50\u83dc\u5355<\/span>","collapse":"<span class=\"screen-reader-text\">\u6298\u53e0\u5b50\u83dc\u5355<\/span>"};
+/* ]]> */
+</script>
+<script type="text/javascript" src="/theme/default/js/functions.js?ver=1.0"></script>
+<link rel="stylesheet" href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css">
+<script src="http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+
+<script type="text/x-mathjax-config">MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});</script>
+<script type="text/javascript" src="http://cdn.bootcss.com/mathjax/2.5.3/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+</body>
+</html>
