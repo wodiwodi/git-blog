@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>离离鸟</title>
+        <description>记录日记的地方</description>
+        <link>/</link>
+        <atom:link href="//feed.xml" rel="self" type="application/rss+xml" />
+        <pubDate>2015-11-21 22:11:22</pubDate>
+        <lastBuildDate>2015-11-21 22:11:22</lastBuildDate>
+        <generator>Gitblog v1.0</generator>
+            </channel>
+</rss>
